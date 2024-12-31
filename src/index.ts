@@ -63,7 +63,7 @@ export class Lox {
 
 const source = `// this is a comment
 
-a = 1
+2 +  1 / 4
 `;
 
 const lox = new Lox();
