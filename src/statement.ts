@@ -1,7 +1,7 @@
 import { Expr, Variable } from "./expression";
 import { Token } from "./scanner";
 
-interface Visitor<R> {
+export interface Visitor<R> {
   visitBlockStmt(stmt: Block): R;
   visitClassStmt(stmt: Class): R;
   visitExpressionStmt(stmt: Expression): R;

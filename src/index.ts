@@ -5,6 +5,7 @@ import { reporter } from "./reporter";
 import { Scanner } from "./scanner";
 import { Parser } from "./parser";
 import { AstPrinter } from "./astPrinter";
+import { Interpreter } from "./interpreter";
 
 export class Lox {
   main(args: string[]) {
@@ -45,25 +46,46 @@ export class Lox {
   run(source: string) {
     const scanner = new Scanner(source);
     const tokens = scanner.scanTokens();
-    const expr = new Parser(tokens).parse();
+    const stmts = new Parser(tokens).parse();
     if (reporter.hadError) {
       return;
     }
 
-    if (!expr) {
+    if (!stmts) {
       return;
     }
-    console.log(expr);
+    console.log(stmts);
 
-    const printer = new AstPrinter();
+    const interpreter = new Interpreter();
 
-    console.log(printer.print(expr));
+    interpreter.interpret(stmts);
   }
 }
 
 const source = `// this is a comment
+var a = 111;
+print a = 23;
 
-2 +  1 / 4
+var a = "global a";
+var b = "global b";
+var c = "global c";
+{
+  var a = "outer a";
+  var b = "outer b";
+  {
+    var a = "inner a";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
+}
+print a;
+print b;
+print c;
+
 `;
 
 const lox = new Lox();
