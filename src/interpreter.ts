@@ -91,13 +91,19 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
     throw new Error("Method not implemented.");
   }
   visitIfStmt(stmt: If): void {
-    throw new Error("Method not implemented.");
+    if (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.thenBranch);
+    } else if (stmt.elseBranch !== null) {
+      this.execute(stmt.elseBranch);
+    }
   }
   visitReturnStmt(stmt: Return): void {
     throw new Error("Method not implemented.");
   }
   visitWhileStmt(stmt: While): void {
-    throw new Error("Method not implemented.");
+    while (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.body);
+    }
   }
 
   // expression
@@ -218,7 +224,17 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitLogicalExpr(expr: Logical): any {
-    throw new Error("Method not implemented.");
+    const left = this.evaluate(expr.left);
+    if (expr.operator.type === TokenType.OR) {
+      if (this.isTruthy(left)) {
+        return left;
+      }
+    } else {
+      if (!this.isTruthy(left)) {
+        return left;
+      }
+    }
+    return this.evaluate(expr.right);
   }
 
   visitSetExpr(expr: Set): any {

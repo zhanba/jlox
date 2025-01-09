@@ -1,15 +1,17 @@
+import { timeStamp } from "node:console";
 import {
   Assign,
   Binary,
   Expr,
   Grouping,
   Literal,
+  Logical,
   Unary,
   Variable,
 } from "./expression";
 import { reporter } from "./reporter";
 import { Token, TokenType } from "./scanner";
-import { Block, Expression, Print, Stmt, Var } from "./statement";
+import { Block, Expression, If, Print, Stmt, Var, While } from "./statement";
 
 export class Parser {
   private current = 0;
@@ -74,11 +76,65 @@ export class Parser {
   }
 
   private statement(): Stmt {
+    if (this.match(TokenType.FOR)) return this.forStatement();
+    if (this.match(TokenType.IF)) return this.ifStatement();
     if (this.match(TokenType.PRINT)) return this.printStatement();
+    if (this.match(TokenType.WHILE)) return this.whileStatement();
     if (this.match(TokenType.LEFT_BRACE)) {
       return new Block(this.block());
     }
     return this.expressionStatement();
+  }
+
+  private forStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+
+    let initializer;
+    if (this.match(TokenType.SEMICOLON)) {
+      initializer = null;
+    } else if (this.match(TokenType.VAR)) {
+      initializer = this.varDeclaration();
+    } else {
+      initializer = this.expressionStatement();
+    }
+
+    let condition = null;
+    if (!this.check(TokenType.SEMICOLON)) {
+      condition = this.expression();
+    }
+    this.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.");
+
+    let increment = null;
+    if (!this.check(TokenType.RIGHT_PAREN)) {
+      increment = this.expression();
+    }
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    let body = this.statement();
+
+    if (increment !== null) {
+      body = new Block([body, new Expression(increment)]);
+    }
+
+    if (condition === null) condition = new Literal(true);
+    body = new While(condition, body);
+
+    if (initializer !== null) {
+      body = new Block([initializer, body]);
+    }
+
+    return body;
+  }
+
+  private ifStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+    const condition = this.expression();
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+
+    const thenBranch = this.statement();
+    const elseBranch = this.match(TokenType.ELSE) ? this.statement() : null;
+
+    return new If(condition, thenBranch, elseBranch);
   }
 
   private block(): Stmt[] {
@@ -97,6 +153,15 @@ export class Parser {
     return new Print(value);
   }
 
+  private whileStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+    const condition = this.expression();
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+    const body = this.statement();
+
+    return new While(condition, body);
+  }
+
   private expressionStatement(): Stmt {
     const expr = this.expression();
     this.consume(TokenType.SEMICOLON, "Expect ';' after expression.");
@@ -107,8 +172,8 @@ export class Parser {
     return this.assignment();
   }
 
-  assignment(): Expr {
-    const expr = this.equality();
+  private assignment(): Expr {
+    const expr = this.or();
 
     if (this.match(TokenType.EQUAL)) {
       const equals = this.previous();
@@ -125,15 +190,48 @@ export class Parser {
     return expr;
   }
 
+  private or(): Expr {
+    let expr = this.and();
+    while (this.match(TokenType.OR)) {
+      const operator = this.previous();
+      const right = this.and();
+      expr = new Logical(expr, operator, right);
+    }
+    return expr;
+  }
+
+  private and(): Expr {
+    let expr = this.equality();
+    while (this.match(TokenType.AND)) {
+      const operator = this.previous();
+      const right = this.equality();
+      expr = new Logical(expr, operator, right);
+    }
+    return expr;
+  }
+
   private equality(): Expr {
-    return this.comparison();
+    let expr = this.comparison();
+    while (this.match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
+      const operator = this.previous();
+      const right = this.comparison();
+      expr = new Binary(expr, operator, right);
+    }
+    return expr;
   }
 
   private comparison(): Expr {
     let expr = this.term();
-    while (this.match(TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)) {
+    while (
+      this.match(
+        TokenType.GREATER,
+        TokenType.GREATER_EQUAL,
+        TokenType.LESS,
+        TokenType.LESS_EQUAL
+      )
+    ) {
       const operator = this.previous();
-      const right = this.comparison();
+      const right = this.term();
       expr = new Binary(expr, operator, right);
     }
     return expr;

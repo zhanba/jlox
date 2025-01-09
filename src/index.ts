@@ -63,29 +63,47 @@ export class Lox {
 }
 
 const source = `// this is a comment
-var a = 111;
-print a = 23;
+// var a = 111;
+// print a = 23;
 
-var a = "global a";
-var b = "global b";
-var c = "global c";
-{
-  var a = "outer a";
-  var b = "outer b";
-  {
-    var a = "inner a";
-    print a;
-    print b;
-    print c;
-  }
-  print a;
-  print b;
-  print c;
+// var a = "global a";
+// var b = "global b";
+// var c = "global c";
+// {
+//   var a = "outer a";
+//   var b = "outer b";
+//   {
+//     var a = "inner a";
+//     print a;
+//     print b;
+//     print c;
+//   }
+//   print a;
+//   print b;
+//   print c;
+// }
+// print a;
+// print b;
+// print c;
+
+print "hi" or 2; // "hi".
+print nil or "yes"; // "yes".
+
+
+
+var x = 0;
+
+if (x < 1) {
+  print "x is less than 1";
 }
-print a;
-print b;
-print c;
 
+var temp;
+
+for (var y = 1; x < 10000; y = temp + y) {
+  print x;
+  temp = x;
+  x = y;
+}
 `;
 
 const lox = new Lox();
