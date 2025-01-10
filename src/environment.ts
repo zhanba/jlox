@@ -22,6 +22,18 @@ export class Environment {
     reporter.error(name, `Undefined variable '${name.lexeme}'.`);
   }
 
+  getAt(distance: number, name: string): any {
+    return this.ancestor(distance).values.get(name);
+  }
+
+  private ancestor(distance: number): Environment {
+    let environment: Environment = this;
+    for (let i = 0; i < distance; i++) {
+      environment = environment.enclosing!;
+    }
+    return environment;
+  }
+
   assign(name: Token, value: any) {
     if (this.values.has(name.lexeme)) {
       this.values.set(name.lexeme, value);

@@ -15,6 +15,7 @@ import {
   This,
   Variable,
 } from "./expression";
+import { BuiltinClock, LoxCallable, LoxFunction } from "./function";
 import { TokenType } from "./scanner";
 import {
   Block,
@@ -31,7 +32,12 @@ import {
 } from "./statement";
 
 export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
-  private environment = new Environment();
+  private globals = new Environment();
+  private environment = this.globals;
+
+  constructor() {
+    this.globals.define("clock", BuiltinClock);
+  }
 
   interpret(statements: Stmt[]) {
     try {
@@ -88,7 +94,8 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
     throw new Error("Method not implemented.");
   }
   visitFunctionStmt(stmt: Function): void {
-    throw new Error("Method not implemented.");
+    const func = new LoxFunction(stmt, this.environment, false);
+    this.environment.define(stmt.name.lexeme, func);
   }
   visitIfStmt(stmt: If): void {
     if (this.isTruthy(this.evaluate(stmt.condition))) {
@@ -98,7 +105,11 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
     }
   }
   visitReturnStmt(stmt: Return): void {
-    throw new Error("Method not implemented.");
+    let value = null;
+    if (stmt.value !== null) {
+      value = this.evaluate(stmt.value);
+    }
+    throw value;
   }
   visitWhileStmt(stmt: While): void {
     while (this.isTruthy(this.evaluate(stmt.condition))) {
@@ -216,7 +227,12 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitCallExpr(expr: Call): any {
-    throw new Error("Method not implemented.");
+    const callee = this.evaluate(expr.callee);
+    if (!LoxCallable.isCallable(callee)) {
+      throw new Error("Can only call functions.");
+    }
+    const args = expr.args.map((arg) => this.evaluate(arg));
+    return callee.call(this, args);
   }
 
   visitGetExpr(expr: Get): any {
