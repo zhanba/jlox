@@ -47,4 +47,8 @@ export class Environment {
 
     reporter.error(name, `Undefined variable '${name.lexeme}'.`);
   }
+
+  assignAt(distance: number, name: Token, value: any) {
+    this.ancestor(distance).values.set(name.lexeme, value);
+  }
 }

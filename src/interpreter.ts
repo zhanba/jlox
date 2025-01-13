@@ -16,7 +16,7 @@ import {
   Variable,
 } from "./expression";
 import { BuiltinClock, LoxCallable, LoxFunction } from "./function";
-import { TokenType } from "./scanner";
+import { Token, TokenType } from "./scanner";
 import {
   Block,
   Class,
@@ -33,6 +33,7 @@ import {
 
 export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   private globals = new Environment();
+  private locals = new Map<Expr, number>();
   private environment = this.globals;
 
   constructor() {
@@ -51,6 +52,10 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
 
   execute(stmt: Stmt) {
     stmt.accept(this);
+  }
+
+  resolve(expr: Expr, depth: number) {
+    this.locals.set(expr, depth);
   }
 
   // statement
@@ -217,12 +222,26 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitVariableExpr(expr: Variable): any {
-    return this.environment.get(expr.name);
+    return this.lookUpVariable(expr.name, expr);
+  }
+
+  private lookUpVariable(name: Token, expr: Expr): any {
+    const distance = this.locals.get(expr);
+    if (distance !== undefined) {
+      return this.environment.getAt(distance, name.lexeme);
+    } else {
+      return this.globals.get(name);
+    }
   }
 
   visitAssignExpr(expr: Assign): any {
     const value = this.evaluate(expr.value);
-    this.environment.assign(expr.name, value);
+    const distance = this.locals.get(expr);
+    if (distance !== undefined) {
+      this.environment.assignAt(distance, expr.name, value);
+    } else {
+      this.globals.assign(expr.name, value);
+    }
     return value;
   }
 

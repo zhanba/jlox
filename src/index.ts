@@ -6,6 +6,7 @@ import { Scanner } from "./scanner";
 import { Parser } from "./parser";
 import { AstPrinter } from "./astPrinter";
 import { Interpreter } from "./interpreter";
+import { Resolver } from "./resolver";
 
 export class Lox {
   main(args: string[]) {
@@ -57,6 +58,12 @@ export class Lox {
     console.log(stmts);
 
     const interpreter = new Interpreter();
+    const resolver = new Resolver(interpreter);
+    resolver.resolveStmts(stmts);
+
+    if (reporter.hadError) {
+      return;
+    }
 
     interpreter.interpret(stmts);
   }
