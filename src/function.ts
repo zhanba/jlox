@@ -1,8 +1,9 @@
+import { LoxInstance } from "./class";
 import { Environment } from "./environment";
 import type { Interpreter } from "./interpreter";
 import { Function } from "./statement";
 
-interface LoxCallable {
+export interface LoxCallable {
   arity(): number;
   call(interpreter: Interpreter, args: any[]): any;
 }
@@ -13,11 +14,6 @@ export namespace LoxCallable {
       typeof value.arity === "function" && typeof value.call === "function"
     );
   }
-}
-
-interface LoxInstance {
-  get(name: string): any;
-  set(name: string, value: any): void;
 }
 
 export class LoxFunction implements LoxCallable {

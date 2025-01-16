@@ -1,3 +1,4 @@
+import { LoxClass, LoxInstance } from "./class";
 import { Environment } from "./environment";
 import {
   Binary,
@@ -96,7 +97,18 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitClassStmt(stmt: Class): void {
-    throw new Error("Method not implemented.");
+    this.environment.define(stmt.name.lexeme, null);
+    const methods = new Map();
+    for (const method of stmt.methods) {
+      const func = new LoxFunction(
+        method,
+        this.environment,
+        method.name.lexeme === "init"
+      );
+      methods.set(method.name.lexeme, func);
+    }
+    const klass = new LoxClass(stmt.name.lexeme, methods);
+    this.environment.assign(stmt.name, klass);
   }
   visitFunctionStmt(stmt: Function): void {
     const func = new LoxFunction(stmt, this.environment, false);
@@ -255,7 +267,11 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitGetExpr(expr: Get): any {
-    throw new Error("Method not implemented.");
+    const object = this.evaluate(expr.object);
+    if (object instanceof LoxInstance) {
+      return object.get(expr.name);
+    }
+    throw new Error("Only instances have properties.");
   }
 
   visitLogicalExpr(expr: Logical): any {
@@ -273,7 +289,13 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitSetExpr(expr: Set): any {
-    throw new Error("Method not implemented.");
+    const object = this.evaluate(expr.object);
+    if (!(object instanceof LoxInstance)) {
+      throw new Error("Only instances have fields.");
+    }
+    const value = this.evaluate(expr.value);
+    object.set(expr.name.lexeme, value);
+    return value;
   }
 
   visitSuperExpr(expr: Super): any {
@@ -281,6 +303,6 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitThisExpr(expr: This): any {
-    throw new Error("Method not implemented.");
+    return this.lookUpVariable(expr.keyword, expr);
   }
 }

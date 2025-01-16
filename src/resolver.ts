@@ -66,9 +66,16 @@ enum FunctionType {
   METHOD,
 }
 
+export enum ClassType {
+  NONE,
+  CLASS,
+  SUBCLASS,
+}
+
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   private scopes = new Stack<Map<string, boolean>>();
   private currentFunction = FunctionType.NONE;
+  private currentClass = ClassType.NONE;
 
   constructor(private interpreter: Interpreter) {}
 
@@ -90,7 +97,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitGetExpr(expr: Get): void {
-    // Implementation for visiting a get expression
+    this.resolve(expr.object);
   }
 
   visitGroupingExpr(expr: Grouping): void {
@@ -105,7 +112,8 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitSetExpr(expr: Set): void {
-    // Implementation for visiting a set expression
+    this.resolve(expr.value);
+    this.resolve(expr.object);
   }
 
   visitSuperExpr(expr: Super): void {
@@ -113,7 +121,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitThisExpr(expr: This): void {
-    // Implementation for visiting a this expression
+    if (this.currentClass === ClassType.NONE) {
+      reporter.error(expr.keyword, "Cannot use 'this' outside of a class.");
+      return;
+    }
+    this.resolveLocal(expr, expr.keyword);
   }
 
   visitUnaryExpr(expr: Unary): void {
@@ -143,7 +155,6 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitBlockStmt(stmt: Block): void {
-    // Implementation for visiting a block statement
     this.beginScope();
     this.resolveStmts(stmt.statements);
     this.endScope();
@@ -168,7 +179,24 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitClassStmt(stmt: Class): void {
-    // Implementation for visiting a class statement
+    const enclosingClass = this.currentClass;
+    this.currentClass = ClassType.CLASS;
+    this.declare(stmt.name);
+    this.define(stmt.name);
+
+    this.beginScope();
+    this.scopes.peek().set("this", true);
+
+    for (const method of stmt.methods) {
+      const declaration =
+        method.name.lexeme === "init"
+          ? FunctionType.INITIALIZER
+          : FunctionType.METHOD;
+      this.resolveFunction(method, declaration);
+    }
+
+    this.endScope();
+    this.currentClass = enclosingClass;
   }
 
   visitExpressionStmt(stmt: Expression): void {
@@ -208,6 +236,16 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   visitReturnStmt(stmt: Return): void {
     if (stmt.value) {
+      if (this.currentFunction === FunctionType.NONE) {
+        reporter.error(stmt.keyword, "Cannot return from top-level code.");
+      }
+
+      if (this.currentFunction === FunctionType.INITIALIZER) {
+        reporter.error(
+          stmt.keyword,
+          "Cannot return a value from an initializer."
+        );
+      }
       this.resolve(stmt.value);
     }
   }

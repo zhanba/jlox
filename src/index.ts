@@ -142,6 +142,18 @@ fun makeCounter() {
 var counter = makeCounter();
 counter(); // "1".
 counter(); // "2".
+
+class A {
+  add() {
+    return this.a + this.b;
+  }
+}
+
+var instance = A();
+instance.a = 1;
+instance.b = 2;
+print instance.add(); // "3".
+
 `;
 
 const lox = new Lox();
