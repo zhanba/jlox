@@ -154,6 +154,17 @@ instance.a = 1;
 instance.b = 2;
 print instance.add(); // "3".
 
+class B < A {
+  add() {
+    return super.add() * 2;
+  }
+}
+
+var instance = B();
+instance.a = 1;
+instance.b = 2;
+print instance.add(); // "6".
+
 `;
 
 const lox = new Lox();

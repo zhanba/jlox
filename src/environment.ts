@@ -4,7 +4,7 @@ import { Token } from "./scanner";
 export class Environment {
   private values = new Map<string, any>();
 
-  constructor(private enclosing: Environment | null = null) {}
+  constructor(public enclosing: Environment | null = null) {}
 
   define(name: string, value: any) {
     this.values.set(name, value);

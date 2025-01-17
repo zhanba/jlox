@@ -117,7 +117,15 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitSuperExpr(expr: Super): void {
-    // Implementation for visiting a super expression
+    if (this.currentClass === ClassType.NONE) {
+      reporter.error(expr.keyword, "Cannot use 'super' outside of a class.");
+    } else if (this.currentClass !== ClassType.SUBCLASS) {
+      reporter.error(
+        expr.keyword,
+        "Cannot use 'super' in a class with no superclass."
+      );
+    }
+    this.resolveLocal(expr, expr.keyword);
   }
 
   visitThisExpr(expr: This): void {
@@ -184,6 +192,22 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.declare(stmt.name);
     this.define(stmt.name);
 
+    if (stmt.superclass && stmt.name.lexeme === stmt.superclass.name.lexeme) {
+      reporter.error(
+        stmt.superclass.name,
+        "A class cannot inherit from itself."
+      );
+    }
+
+    if (stmt.superclass) {
+      this.currentClass = ClassType.SUBCLASS;
+      this.resolve(stmt.superclass);
+    }
+
+    if (stmt.superclass) {
+      this.beginScope();
+      this.scopes.peek().set("super", true);
+    }
     this.beginScope();
     this.scopes.peek().set("this", true);
 
@@ -196,6 +220,9 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
 
     this.endScope();
+    if (stmt.superclass) {
+      this.endScope();
+    }
     this.currentClass = enclosingClass;
   }
 

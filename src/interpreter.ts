@@ -35,7 +35,7 @@ import {
 export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   private globals = new Environment();
   private locals = new Map<Expr, number>();
-  private environment = this.globals;
+  private environment: Environment = this.globals;
 
   constructor() {
     this.globals.define("clock", BuiltinClock);
@@ -97,7 +97,21 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitClassStmt(stmt: Class): void {
+    let superclass;
+    if (stmt.superclass !== null) {
+      superclass = this.evaluate(stmt.superclass);
+      if (!(superclass instanceof LoxClass)) {
+        throw new Error("Superclass must be a class.");
+      }
+    }
+
     this.environment.define(stmt.name.lexeme, null);
+
+    if (stmt.superclass !== null) {
+      this.environment = new Environment(this.environment);
+      this.environment.define("super", superclass);
+    }
+
     const methods = new Map();
     for (const method of stmt.methods) {
       const func = new LoxFunction(
@@ -107,7 +121,11 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
       );
       methods.set(method.name.lexeme, func);
     }
-    const klass = new LoxClass(stmt.name.lexeme, methods);
+    const klass = new LoxClass(stmt.name.lexeme, methods, superclass);
+
+    if (superclass && this.environment.enclosing) {
+      this.environment = this.environment.enclosing;
+    }
     this.environment.assign(stmt.name, klass);
   }
   visitFunctionStmt(stmt: Function): void {
@@ -299,7 +317,14 @@ export class Interpreter implements ExprVisitor<any>, StmtVisitor<void> {
   }
 
   visitSuperExpr(expr: Super): any {
-    throw new Error("Method not implemented.");
+    const distance = this.locals.get(expr);
+    const superclass = this.environment.getAt(distance!, "super") as LoxClass;
+    const object = this.environment.getAt(distance! - 1, "this") as LoxInstance;
+    const method = superclass.findMethod(expr.method.lexeme);
+    if (!method) {
+      throw new Error(`Undefined property '${expr.method.lexeme}'.`);
+    }
+    return method.bind(object);
   }
 
   visitThisExpr(expr: This): any {
